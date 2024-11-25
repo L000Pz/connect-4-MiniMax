@@ -71,4 +71,10 @@ A feature-rich **Connect 4 game** designed for competitive fun and strategic cha
 - Players make moves by filling the lowest available cell in the chosen column.
 - The game checks for wins after every move.
 
+## 🤝 Contributing
 
+We welcome contributions! 🎉 Fork the repository, make your improvements, and submit a pull request.
+
+## 📜 License
+
+This project is licensed under the **MIT License**—feel free to use, modify, and distribute it.
