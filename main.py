@@ -2,61 +2,38 @@ import numpy as np
 import random
 from typing import Tuple, Optional
 
-# Constants for the game
-BOARD_SIZE = 10  # Size of the board (10x10 grid)
-EMPTY = 0        # Empty cell
-P1 = 1           # Player 1
-P2 = 2           # Player 2
-AI = 3           # AI player
+BOARD_SIZE = 10  # Changed to 10x10 as per requirements
+EMPTY = 0
+P1 = 1
+P2 = 2
+AI = 3
 
 class Connect4:
-    """
-    A class representing the Connect 4 game. Supports a 10x10 board, dynamic AI depth,
-    and two modes of turn selection (random or fixed turn order).
-    """
     def __init__(self):
-        """
-        Initializes the Connect 4 board and related variables.
-        """
-        self.board = np.zeros((BOARD_SIZE, BOARD_SIZE))  # Create an empty board
-        self.last_two_players = []  # Keep track of the last two players for random turn logic
-        self.turn_order = [P1, P2, AI]  # Fixed turn order
-        self.current_turn_index = 0  # Index for tracking fixed turn order
-
+        self.board = np.zeros((BOARD_SIZE, BOARD_SIZE))
+        self.last_two_players = []
+        self.turn_order = [P1, P2, AI]
+        self.current_turn_index = 0
     def print_board(self):
-        """
-        Prints the current state of the board to the console.
-        """
-        # Print column numbers
         print(" ", end=" ")
         for i in range(BOARD_SIZE):
             print(f"{i+1:2}", end=" ")
         print()
         
-        # Print the board with symbols
         for row in self.board:
             for cell in row:
                 if cell == EMPTY:
-                    print("⬜", end=" ")  # Empty cell
+                    print("⬜", end=" ")
                 elif cell == P1:
-                    print("🔴", end=" ")  # Player 1
+                    print("🔴", end=" ")
                 elif cell == P2:
-                    print("🔵", end=" ")  # Player 2
+                    print("🔵", end=" ")
                 elif cell == AI:
-                    print("🤖", end=" ")  # AI player
+                    print("🤖", end=" ")
             print()
 
     def check_for_win(self, player: int) -> bool:
-        """
-        Checks if the given player has won the game.
-
-        Args:
-            player (int): The player to check for a win.
-
-        Returns:
-            bool: True if the player has a winning position, False otherwise.
-        """
-        # Horizontal check
+    # Horizontal check
         for row in range(BOARD_SIZE):
             for col in range(BOARD_SIZE - 3):
                 if np.all(self.board[row, col:col+4] == player):
@@ -83,58 +60,22 @@ class Connect4:
         return False
 
     def is_valid_move(self, col: int) -> bool:
-        """
-        Checks if a move in the given column is valid.
-
-        Args:
-            col (int): The column to check.
-
-        Returns:
-            bool: True if the move is valid, False otherwise.
-        """
         return 0 <= col < BOARD_SIZE and self.board[0][col] == EMPTY
 
     def get_valid_moves(self) -> list:
-        """
-        Gets a list of all valid moves (columns) where a move can be made.
-
-        Returns:
-            list: A list of valid column indices.
-        """
         return [col for col in range(BOARD_SIZE) if self.is_valid_move(col)]
 
     def make_move(self, col: int, player: int) -> bool:
-        """
-        Places a piece for the player in the specified column.
-
-        Args:
-            col (int): The column to place the piece.
-            player (int): The player making the move.
-
-        Returns:
-            bool: True if the move was successful, False otherwise.
-        """
-        for row in range(BOARD_SIZE-1, -1, -1):  # Start from the bottom of the column
+        for row in range(BOARD_SIZE-1, -1, -1):
             if self.board[row, col] == EMPTY:
                 self.board[row, col] = player
                 return True
         return False
 
     def evaluate_window(self, window: np.ndarray, player: int) -> int:
-        """
-        Evaluates a window of 4 cells and assigns a score based on the player's advantage.
-
-        Args:
-            window (np.ndarray): The window of 4 cells.
-            player (int): The player for whom to evaluate.
-
-        Returns:
-            int: The score for the window.
-        """
         score = 0
         opponent = P1 if player != P1 else P2
         
-        # Scoring based on the number of pieces in the window
         if np.sum(window == player) == 4:
             score += 100  # Win condition
         elif np.sum(window == player) == 3 and np.sum(window == EMPTY) == 1:
@@ -142,45 +83,42 @@ class Connect4:
         elif np.sum(window == player) == 2 and np.sum(window == EMPTY) == 2:
             score += 5   # Decent position
         
-        # Penalize if the opponent is in a strong position
         if np.sum(window == opponent) == 3 and np.sum(window == EMPTY) == 1:
-            score -= 8
+            score -= 8  # Block opponent's strong position
         
         return score
 
+
     def score_position(self, player: int) -> int:
-        """
-        Scores the entire board for the given player.
-
-        Args:
-            player (int): The player for whom to score the board.
-
-        Returns:
-            int: The total score for the board.
-        """
         score = 0
+        opponent = P1 if player != P1 else P2
         
         # Center column weighting
         center_array = self.board[:, BOARD_SIZE // 2]
         center_count = np.sum(center_array == player)
         score += center_count * 6  # Increased weight for central control
         
-        # Horizontal, vertical, and diagonal scoring
+        # Horizontal scoring
         for r in range(BOARD_SIZE):
+            row_array = self.board[r, :]
             for c in range(BOARD_SIZE - 3):
-                window = self.board[r, c:c+4]
+                window = row_array[c:c + 4]
                 score += self.evaluate_window(window, player)
         
+        # Vertical scoring
         for c in range(BOARD_SIZE):
+            col_array = self.board[:, c]
             for r in range(BOARD_SIZE - 3):
-                window = self.board[r:r+4, c]
+                window = col_array[r:r + 4]
                 score += self.evaluate_window(window, player)
         
+        # Positive slope diagonal scoring
         for r in range(BOARD_SIZE - 3):
             for c in range(BOARD_SIZE - 3):
                 window = [self.board[r + i][c + i] for i in range(4)]
                 score += self.evaluate_window(np.array(window), player)
         
+        # Negative slope diagonal scoring
         for r in range(3, BOARD_SIZE):
             for c in range(BOARD_SIZE - 3):
                 window = [self.board[r - i][c + i] for i in range(4)]
@@ -188,14 +126,100 @@ class Connect4:
 
         return score
 
+    def minimax(self, depth: int, alpha: float, beta: float, maximizing_player: bool) -> Tuple[Optional[int], int]:
+        valid_moves = self.get_valid_moves()
+        is_terminal = self.check_for_win(P1) or self.check_for_win(P2) or self.check_for_win(AI) or not valid_moves
+
+        # Terminal node or depth reached
+        if depth == 0 or is_terminal:
+            if is_terminal:
+                if self.check_for_win(AI):
+                    return None, 1000000
+                elif self.check_for_win(P1) or self.check_for_win(P2):
+                    return None, -1000000
+                else:
+                    return None, 0
+            else:
+                return None, self.score_position(AI)
+
+        # Prioritize center column and nearby columns
+        center_col = BOARD_SIZE // 2
+        valid_moves.sort(key=lambda col: abs(col - center_col))
+
+        if maximizing_player:
+            value = float('-inf')
+            column = valid_moves[0]
+
+            for col in valid_moves:
+                # Simulate move
+                for row in range(BOARD_SIZE - 1, -1, -1):
+                    if self.board[row, col] == EMPTY:
+                        self.board[row, col] = AI
+                        break
+
+                new_score = self.minimax(depth - 1, alpha, beta, False)[1]
+                # Undo move
+                self.board[row, col] = EMPTY
+
+                if new_score > value:
+                    value = new_score
+                    column = col
+                alpha = max(alpha, value)
+                if alpha >= beta:
+                    break
+            return column, value
+
+        else:
+            value = float('inf')
+            column = valid_moves[0]
+
+            for col in valid_moves:
+                opponent = P1 if self.score_position(P1) > self.score_position(P2) else P2
+                # Simulate move
+                for row in range(BOARD_SIZE - 1, -1, -1):
+                    if self.board[row, col] == EMPTY:
+                        self.board[row, col] = opponent
+                        break
+
+                new_score = self.minimax(depth - 1, alpha, beta, True)[1]
+                # Undo move
+                self.board[row, col] = EMPTY
+
+                if new_score < value:
+                    value = new_score
+                    column = col
+                beta = min(beta, value)
+                if alpha >= beta:
+                    break
+            return column, value
+
+
+    def get_next_player_random(self) -> int:
+        if len(self.last_two_players) < 2:
+            next_player = random.choice([P1, P2, AI])
+        else:
+            if self.last_two_players[-1] == self.last_two_players[-2]:
+                possible_players = [p for p in [P1, P2, AI] if p != self.last_two_players[-1]]
+                next_player = random.choice(possible_players)
+            else:
+                next_player = random.choice([P1, P2, AI])
+        
+        self.last_two_players.append(next_player)
+        if len(self.last_two_players) > 2:
+            self.last_two_players.pop(0)
+        return next_player
+    
+    def get_next_player(self) -> int:
+        player = self.turn_order[self.current_turn_index]
+        self.current_turn_index = (self.current_turn_index + 1) % len(self.turn_order)
+        return player
     def dynamic_depth(self) -> int:
         """
-        Adjusts the search depth dynamically based on the number of empty cells.
-
-        Returns:
-            int: The depth to use for minimax.
+        Adjust the depth of the minimax algorithm dynamically based on the number of empty cells.
         """
         empty_cells = np.sum(self.board == EMPTY)
+
+        # Adjust depth based on the game phase
         if empty_cells > 60:  # Early game
             return 3
         elif empty_cells > 30:  # Mid game
@@ -204,9 +228,6 @@ class Connect4:
             return 5
 
 def game():
-    """
-    The main function to start and manage the Connect 4 game.
-    """
     game = Connect4()
     
     print("Welcome to Connect 4!")
@@ -228,7 +249,7 @@ def game():
         print(f"\nPlayer {player_symbols[current_player]}'s turn")
         
         if current_player == AI:
-            depth = game.dynamic_depth()  # Adjust depth dynamically
+            depth = game.dynamic_depth()  # Determine depth dynamically
             col, _ = game.minimax(depth, float('-inf'), float('inf'), True)
             if col is not None:
                 game.make_move(col, AI)
