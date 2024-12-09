@@ -2,19 +2,44 @@ import numpy as np
 import random
 from typing import Tuple, Optional
 
-BOARD_SIZE = 10  # Changed to 10x10 as per requirements
-EMPTY = 0
-P1 = 1
-P2 = 2
-AI = 3
+"""
+A Connect 4 game implementation with AI opponent on a 10x10 board.
+Supports both normal turn-based and random turn modes with 3 players (2 human, 1 AI).
+Uses minimax algorithm with alpha-beta pruning for AI moves.
+"""
+
+BOARD_SIZE = 10  # Board dimensions (10x10)
+EMPTY = 0        # Empty cell marker
+P1 = 1          # Player 1 marker
+P2 = 2          # Player 2 marker
+AI = 3          # AI player marker
 
 class Connect4:
+    """
+    Main game class implementing Connect 4 mechanics and AI opponent.
+    
+    Attributes:
+        board (np.ndarray): 10x10 game board array
+        last_two_players (list): Tracks last two players for random mode
+        turn_order (list): Defines player sequence [P1, P2, AI]
+        current_turn_index (int): Current position in turn order
+    """
+    
     def __init__(self):
+        """Initialize game board and turn tracking."""
         self.board = np.zeros((BOARD_SIZE, BOARD_SIZE))
         self.last_two_players = []
         self.turn_order = [P1, P2, AI]
         self.current_turn_index = 0
+
     def print_board(self):
+        """
+        Display current game board state using emoji markers:
+        ⬜ for empty cells
+        🔴 for Player 1
+        🔵 for Player 2
+        🤖 for AI
+        """
         print(" ", end=" ")
         for i in range(BOARD_SIZE):
             print(f"{i+1:2}", end=" ")
@@ -33,7 +58,16 @@ class Connect4:
             print()
 
     def check_for_win(self, player: int) -> bool:
-    # Horizontal check
+        """
+        Check if specified player has won by connecting 4 pieces.
+        
+        Args:
+            player (int): Player marker to check for win (P1, P2, or AI)
+            
+        Returns:
+            bool: True if player has won, False otherwise
+        """
+        # Horizontal check
         for row in range(BOARD_SIZE):
             for col in range(BOARD_SIZE - 3):
                 if np.all(self.board[row, col:col+4] == player):
@@ -60,12 +94,37 @@ class Connect4:
         return False
 
     def is_valid_move(self, col: int) -> bool:
+        """
+        Check if a move is valid in the specified column.
+        
+        Args:
+            col (int): Column index to check
+            
+        Returns:
+            bool: True if move is valid, False otherwise
+        """
         return 0 <= col < BOARD_SIZE and self.board[0][col] == EMPTY
 
     def get_valid_moves(self) -> list:
+        """
+        Get list of valid moves (columns) available.
+        
+        Returns:
+            list: List of valid column indices
+        """
         return [col for col in range(BOARD_SIZE) if self.is_valid_move(col)]
 
     def make_move(self, col: int, player: int) -> bool:
+        """
+        Place player's piece in specified column.
+        
+        Args:
+            col (int): Column to place piece
+            player (int): Player marker (P1, P2, or AI)
+            
+        Returns:
+            bool: True if move was successful, False if invalid
+        """
         for row in range(BOARD_SIZE-1, -1, -1):
             if self.board[row, col] == EMPTY:
                 self.board[row, col] = player
@@ -73,6 +132,16 @@ class Connect4:
         return False
 
     def evaluate_window(self, window: np.ndarray, player: int) -> int:
+        """
+        Evaluate score for a window of 4 positions.
+        
+        Args:
+            window (np.ndarray): Array of 4 positions to evaluate
+            player (int): Player to evaluate score for
+            
+        Returns:
+            int: Score for the window (-inf to +inf)
+        """
         score = 0
         opponent = P1 if player != P1 else P2
         
@@ -88,8 +157,16 @@ class Connect4:
         
         return score
 
-
     def score_position(self, player: int) -> int:
+        """
+        Calculate overall score for current board position.
+        
+        Args:
+            player (int): Player to evaluate position for
+            
+        Returns:
+            int: Total score for the position
+        """
         score = 0
         opponent = P1 if player != P1 else P2
         
@@ -127,6 +204,18 @@ class Connect4:
         return score
 
     def minimax(self, depth: int, alpha: float, beta: float, maximizing_player: bool) -> Tuple[Optional[int], int]:
+        """
+        Minimax algorithm with alpha-beta pruning for AI move selection.
+        
+        Args:
+            depth (int): Current search depth
+            alpha (float): Alpha value for pruning
+            beta (float): Beta value for pruning
+            maximizing_player (bool): True if maximizing, False if minimizing
+            
+        Returns:
+            Tuple[Optional[int], int]: Best move column and its score
+        """
         valid_moves = self.get_valid_moves()
         is_terminal = self.check_for_win(P1) or self.check_for_win(P2) or self.check_for_win(AI) or not valid_moves
 
@@ -193,8 +282,13 @@ class Connect4:
                     break
             return column, value
 
-
     def get_next_player_random(self) -> int:
+        """
+        Get next player randomly, ensuring same player doesn't go twice in a row.
+        
+        Returns:
+            int: Next player marker (P1, P2, or AI)
+        """
         if len(self.last_two_players) < 2:
             next_player = random.choice([P1, P2, AI])
         else:
@@ -210,12 +304,22 @@ class Connect4:
         return next_player
     
     def get_next_player(self) -> int:
+        """
+        Get next player in normal turn order sequence.
+        
+        Returns:
+            int: Next player marker (P1, P2, or AI)
+        """
         player = self.turn_order[self.current_turn_index]
         self.current_turn_index = (self.current_turn_index + 1) % len(self.turn_order)
         return player
+
     def dynamic_depth(self) -> int:
         """
-        Adjust the depth of the minimax algorithm dynamically based on the number of empty cells.
+        Calculate appropriate minimax depth based on game phase.
+        
+        Returns:
+            int: Search depth for minimax algorithm
         """
         empty_cells = np.sum(self.board == EMPTY)
 
@@ -228,6 +332,10 @@ class Connect4:
             return 5
 
 def game():
+    """
+    Main game loop handling player interactions and game flow.
+    Allows choice between random and normal turn modes.
+    """
     game = Connect4()
     
     print("Welcome to Connect 4!")
@@ -249,7 +357,7 @@ def game():
         print(f"\nPlayer {player_symbols[current_player]}'s turn")
         
         if current_player == AI:
-            depth = game.dynamic_depth()  # Determine depth dynamically
+            depth = game.dynamic_depth()
             col, _ = game.minimax(depth, float('-inf'), float('inf'), True)
             if col is not None:
                 game.make_move(col, AI)
